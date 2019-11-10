@@ -1,4 +1,9 @@
 import torch
+import torchvision.transforms.functional as TF
+from matplotlib import pyplot as plt
+import torchvision
+import math
+import numpy as np
 
 
 def rot90(image):
@@ -71,6 +76,29 @@ def apply(func, M):
     return res
 
 
+def rotate(image, label):
+
+    # print("Rotating by ", label.item()*(180/math.pi))
+
+    # img = image.detach().numpy().transpose(1,2,0)
+    # show_img(img)
+
+    image = torchvision.transforms.ToPILImage()(image)
+    rot_image = torchvision.transforms.functional.rotate(image, label.item(), expand=False)
+    rot_image = torchvision.transforms.ToTensor()(rot_image)
+
+    # img = rot_image.detach().numpy().transpose(1,2,0)
+    # show_img(img)
+
+    return rot_image
+
+def apply2(func, M, labels):
+
+    tList = [func(m, labels[i]) for i,m in enumerate(torch.unbind(M, dim=0))]
+    res = torch.stack(tList, dim=0)
+
+    return res
+
 def create_rot_batch(images, labels, rot=['90', '180', '270']):
     """
     Takes a mini-batch of images with the corresponding labels and adds rotated versions of the images to the
@@ -87,27 +115,30 @@ def create_rot_batch(images, labels, rot=['90', '180', '270']):
 
     rot_batch = images
     class_labels = labels
-    rot_labels = torch.ones(len(images)) * 0
+    # rot_labels = torch.ones(len(images)) * 0
+    rot_labels = torch.FloatTensor(len(images)).uniform_(-math.pi, math.pi)*(180/math.pi)
     counter = 1
 
-    if '90' in rot:
-        images_rot90 = apply(rot90, images)
-        rot_batch = torch.cat((rot_batch, images_rot90), 0)
-        class_labels = torch.cat((class_labels, labels), 0)
-        rot_labels = torch.cat((rot_labels, torch.ones(len(images)) * counter), 0)
-        counter += 1
+    rot_batch = apply2(rotate, images, rot_labels)
 
-    if '180' in rot:
-        images_rot180 = apply(rot180, images)
-        rot_batch = torch.cat((rot_batch, images_rot180), 0)
-        class_labels = torch.cat((class_labels, labels), 0)
-        rot_labels = torch.cat((rot_labels, torch.ones(len(images)) * counter), 0)
-        counter += 1
+    # if '90' in rot:
+    #     images_rot90 = apply(rot90, images)
+    #     rot_batch = torch.cat((rot_batch, images_rot90), 0)
+    #     class_labels = torch.cat((class_labels, labels), 0)
+    #     rot_labels = torch.cat((rot_labels, torch.ones(len(images)) * counter), 0)
+    #     counter += 1
 
-    if '270' in rot:
-        images_rot270 = apply(rot270, images)
-        rot_batch = torch.cat((rot_batch, images_rot270), 0)
-        class_labels = torch.cat((class_labels, labels), 0)
-        rot_labels = torch.cat((rot_labels, torch.ones(len(images)) * counter), 0)
+    # if '180' in rot:
+    #     images_rot180 = apply(rot180, images)
+    #     rot_batch = torch.cat((rot_batch, images_rot180), 0)
+    #     class_labels = torch.cat((class_labels, labels), 0)
+    #     rot_labels = torch.cat((rot_labels, torch.ones(len(images)) * counter), 0)
+    #     counter += 1
+
+    # if '270' in rot:
+    #     images_rot270 = apply(rot270, images)
+    #     rot_batch = torch.cat((rot_batch, images_rot270), 0)
+    #     class_labels = torch.cat((class_labels, labels), 0)
+    #     rot_labels = torch.cat((rot_labels, torch.ones(len(images)) * counter), 0)
 
     return rot_batch, class_labels, rot_labels

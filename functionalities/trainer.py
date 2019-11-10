@@ -112,6 +112,10 @@ def train(num_epoch, net, criterion, optimizer, trainloader, validloader=None, t
                 rot_inputs, rot_labels = rot_inputs.to(device), rot_labels.to(device)
                 optimizer.zero_grad()
                 outputs = net(rot_inputs)
+                print(" -- ")
+                print(outputs)
+                print(">>>")
+                print(rot_labels)
                 loss = criterion(outputs, rot_labels.long())
                 loss.backward()
                 optimizer.step()
@@ -119,7 +123,7 @@ def train(num_epoch, net, criterion, optimizer, trainloader, validloader=None, t
             # print statistics
             running_loss += loss.item()
             if i % 60 == 59:
-                print('[{}, {}] loss: {:.3f}'.format(epoch + 1, i + 1, running_loss / 60))
+                print('[{}, {}] loss: {:.10f}'.format(epoch + 1, i + 1, running_loss / 60))
                 running_loss = 0.0
 
         # epoch loss
