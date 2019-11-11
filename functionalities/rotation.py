@@ -111,7 +111,8 @@ def create_rot_batch(images, labels, rot=['90', '180', '270']):
     classification task, rot_labels: corresponding labels for the rotation task
     """
 
-    rot_batch = images
+    c_images = apply(circulize, images)
+    rot_batch = c_images
     class_labels = labels
     rot_labels = torch.ones(len(images)) * 0
     counter = 1
@@ -120,8 +121,8 @@ def create_rot_batch(images, labels, rot=['90', '180', '270']):
         r = (int)(r)
         rotations = torch.ones(len(images)) * (r*1.0)
         images_rot = apply2(rotate, images, rotations)
-        # c_images_rot = apply(circulize, images_rot)
-        rot_batch = torch.cat((rot_batch, images_rot), 0)
+        c_images_rot = apply(circulize, images_rot)
+        rot_batch = torch.cat((rot_batch, c_images_rot), 0)
         class_labels = torch.cat((class_labels, labels), 0)
         rot_labels = torch.cat((rot_labels, torch.ones(len(images)) * counter), 0)
         counter += 1
