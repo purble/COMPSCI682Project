@@ -23,7 +23,8 @@ def accuracy_from_paper(output, target, topk=(1,)):
     return res
 
 
-def get_accuracy(loader, net, rot=None, printing=True, classifier=None, conv_block_num=None, use_paper_metric=False):
+# def get_accuracy(loader, net, rot=None, printing=True, classifier=None, conv_block_num=None, use_paper_metric=False):
+def get_accuracy(loader, net, rot=None, printing=True, classifier=None, conv_block_num=None, use_paper_metric=False, thresh=45.0):
     """
     Compute the accuracy of a neural network on a test or evaluation set wrapped by a loader.
 
@@ -96,9 +97,17 @@ def get_accuracy(loader, net, rot=None, printing=True, classifier=None, conv_blo
                     tmp_accuracy = accuracy_from_paper(outputs, rot_labels.long())[0].item()
                     accuracy_lst.append(tmp_accuracy)
                 else:
-                    _, predicted = torch.max(outputs.data, 1)
+                    # _, predicted = torch.max(outputs.data, 1)
                     total += rot_labels.size(0)
-                    correct += (predicted == rot_labels.long()).sum().item()
+                    # correct += (predicted == rot_labels.long()).sum().item()
+
+                    # Binning for regression result
+                    # print(outputs.shape)
+                    outputs = outputs.reshape(outputs.size()[0])
+                    # print(outputs)
+                    # print(rot_labels)
+                    # print(torch.abs(outputs - rot_labels) <= thresh)
+                    correct += (torch.abs(outputs - rot_labels) <= thresh).sum().item()
 
     if use_paper_metric:
         accuracy = sum(accuracy_lst) / float(len(accuracy_lst))
