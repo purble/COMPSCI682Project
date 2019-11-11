@@ -4,6 +4,8 @@ import torchvision
 import math
 import numpy as np
 
+circle_approx = [32,32,32,31,31,30,29,28,27,25,24,22,19,16,12,0]
+
 def rot90(image):
     """
     Rotate an image by 90 degree by first transposing the image and then flipping it vertically.
@@ -72,6 +74,22 @@ def apply(func, M):
     res = torch.stack(tList, dim=0)
 
     return res
+
+def circulize(img):
+    img = img.detach().numpy().transpose(1,2,0)
+    # print(img.shape)
+    arr = np.zeros_like(img)
+    m = (int)(img.shape[0]/2)
+    print("circle_approx")
+    for i,s in enumerate(circle_approx):
+        r = (int)(math.ceil(s/2))
+        # print(m, i, r)
+        arr[m-i-1,m-r:m+r,:] = img[m-i-1,m-r:m+r,:]
+        arr[m+i,m-r:m+r,:] = img[m+i,m-r:m+r,:]
+
+    # print(arr.shape)
+
+    return torchvision.transforms.ToTensor()(arr)
 
 def rotate(image, rotation):
 
