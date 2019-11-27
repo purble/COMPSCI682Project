@@ -80,7 +80,7 @@ def circulize(img):
     # print(img.shape)
     arr = np.zeros_like(img)
     m = (int)(img.shape[0]/2)
-    print("circle_approx")
+    # print("circle_approx")
     for i,s in enumerate(circle_approx):
         r = (int)(math.ceil(s/2))
         # print(m, i, r)
@@ -114,6 +114,10 @@ def apply2(func, M, rotations):
 
     return res
 
+def show_img(img):
+    print("<<< ", img.shape)
+    plt.imshow(img)
+    plt.show()
 
 def create_rot_batch(images, labels, rot=['90', '180', '270']):
     """
@@ -144,6 +148,21 @@ def create_rot_batch(images, labels, rot=['90', '180', '270']):
         class_labels = torch.cat((class_labels, labels), 0)
         rot_labels = torch.cat((rot_labels, torch.ones(len(images)) * counter), 0)
         counter += 1
+
+    idx = 1
+    img = rot_batch[idx,:,:,:].detach().numpy().transpose(1,2,0)
+    show_img(img)
+    print(rot_labels[idx])
+
+    for i,r in enumerate(rot):
+        idx = (4*(i+1))+1
+        img = rot_batch[idx,:,:,:].detach().numpy().transpose(1,2,0)
+        show_img(img)
+
+        print(rot_labels[idx])
+
+
+    bb
 
     # if '90' in rot:
     #     images_rot90 = apply(rot90, images)
