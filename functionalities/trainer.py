@@ -13,7 +13,7 @@ from architecture import RotNet as RN
 def train(num_epoch, net, criterion, optimizer, trainloader, validloader=None, testloader=None, classifier=None,
           conv_block_num=None, epoch_offset=0, rot=None, printing=True, max_accuracy=0, best_epoch=0,
           use_paper_metric=False, use_ConvClassifier=False, semi=None, save_after_epoch=10, best_accuracy = 0.0, start_epoch = 0, 
-          chkpt_fn = ''):
+          path='', chkpt_fn = ''):
     """
     Train a neural network.
 
@@ -146,7 +146,7 @@ def train(num_epoch, net, criterion, optimizer, trainloader, validloader=None, t
                     'best_accuracy': accuracy
                 }
                 best_accuracy = accuracy
-                fm.save_ckp(checkpoint_best, './models', chkpt_fn+'best_model.pt')
+                fm.save_ckp(checkpoint_best, path, chkpt_fn+'best_model.pt')
 
             # Save model and best model to checkpoint file after every n epochs specificied by parameter save_after_epoch
             if ((epoch + 1)% save_after_epoch == 0):
@@ -156,7 +156,7 @@ def train(num_epoch, net, criterion, optimizer, trainloader, validloader=None, t
                     'optimizer': optimizer.state_dict(),
                     'best_accuracy': best_accuracy
                 }
-                fm.save_ckp(checkpoint, './models', chkpt_fn+'model.pt')
+                fm.save_ckp(checkpoint, path, chkpt_fn+'model.pt')
 
         if validloader is not None:
 
@@ -217,7 +217,7 @@ def train(num_epoch, net, criterion, optimizer, trainloader, validloader=None, t
 
 def adaptive_learning(lr_list, epoch_change, momentum, weight_decay, net, criterion, trainloader, validloader=None,
                       testloader=None, classifier=None, conv_block_num=None, rot=None, use_paper_metric=False,
-                      use_ConvClassifier=False, semi=None, save_after_epoch=10, load_checkpoint=False, chkpt_fn = ''):
+                      use_ConvClassifier=False, semi=None, save_after_epoch=10, load_checkpoint=False, path='', chkpt_fn = ''):
     """
     Use adaptive learning rate to train the neural network.
 
@@ -264,6 +264,7 @@ def adaptive_learning(lr_list, epoch_change, momentum, weight_decay, net, criter
     best_accuracy = 0.0
 
     for i, lr in enumerate(lr_list):
+        
         if i == 0:
             epoch_offset = 0
         else:
@@ -279,11 +280,13 @@ def adaptive_learning(lr_list, epoch_change, momentum, weight_decay, net, criter
                                       nesterov=True)
 
         if (epoch > num_epoch):
+            print("Continuing as epoch# and num_epoch : ", epoch, num_epoch)
             epoch = epoch - num_epoch
             continue
 
         if load_checkpoint is True and epoch == -1:
-            net, optimizer, epoch, best_accuracy = fm.load_ckp('./models/'+chkpt_fn+'model.pt', net, optimizer)
+            net, optimizer, epoch, best_accuracy = fm.load_ckp(path+chkpt_fn+'model.pt', net, optimizer)
+            print("Loaded epoch# ", epoch)
             load_checkpoint = False # So that this loop is not entered again
             if (epoch > num_epoch):
                 epoch = epoch - num_epoch
@@ -296,10 +299,14 @@ def adaptive_learning(lr_list, epoch_change, momentum, weight_decay, net, criter
 
         if epoch < 0: epoch = 0 # No model was loaded
 
+        print("Starting with ", epoch, " epochs, total epochs : ", num_epoch, " and lr :", lr)
+
         tmp_loss_log, tmp_valid_accuracy_log, tmp_test_accuracy_log, max_accuracy, best_epoch, best_accuracy = \
             train(num_epoch, net, criterion, optimizer, trainloader, validloader, testloader, classifier,
                   conv_block_num, epoch_offset, rot, printing, max_accuracy, best_epoch, use_paper_metric,
-                  use_ConvClassifier, semi, save_after_epoch, best_accuracy, epoch, chkpt_fn)
+                  use_ConvClassifier, semi, save_after_epoch, best_accuracy, epoch, path, chkpt_fn)
+
+        epoch = -1 # Once picked up from right place continue with regular schedule
 
         loss_log += tmp_loss_log
         valid_accuracy_log += tmp_valid_accuracy_log
