@@ -12,7 +12,8 @@ from architecture import RotNet as RN
 
 def train(num_epoch, net, criterion, optimizer, trainloader, validloader=None, testloader=None, classifier=None,
           conv_block_num=None, epoch_offset=0, rot=None, printing=True, max_accuracy=0, best_epoch=0,
-          use_paper_metric=False, use_ConvClassifier=False, semi=None):
+          use_paper_metric=False, use_ConvClassifier=False, semi=None, save_after_epoch=10, best_accuracy = 0.0, start_epoch = 0, 
+          chkpt_fn = ''):
     """
     Train a neural network.
 
@@ -87,8 +88,10 @@ def train(num_epoch, net, criterion, optimizer, trainloader, validloader=None, t
     loss_log = []
     valid_accuracy_log = []
     test_accuracy_log = []
+    checkpoint = None
+    checkpoint_best = None
 
-    for epoch in range(epoch_offset, num_epoch + epoch_offset):
+    for epoch in range(epoch_offset+start_epoch, num_epoch + epoch_offset):
         running_loss = 0.0
         for i, data in enumerate(trainloader, 0):
             inputs, labels = data
@@ -133,6 +136,27 @@ def train(num_epoch, net, criterion, optimizer, trainloader, validloader=None, t
                                         use_paper_metric=use_paper_metric)
             test_accuracy_log.append(accuracy)
             print("Epoch: {} -> Test Accuracy: {}".format(epoch + 1, accuracy))
+
+
+            if accuracy >= best_accuracy:
+                checkpoint_best = {
+                    'epoch': epoch + 1,
+                    'state_dict': net.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'best_accuracy': accuracy
+                }
+                best_accuracy = accuracy
+                fm.save_ckp(checkpoint_best, './models', chkpt_fn+'best_model.pt')
+
+            # Save model and best model to checkpoint file after every n epochs specificied by parameter save_after_epoch
+            if ((epoch + 1)% save_after_epoch == 0):
+                checkpoint = {
+                    'epoch': epoch + 1,
+                    'state_dict': net.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'best_accuracy': best_accuracy
+                }
+                fm.save_ckp(checkpoint, './models', chkpt_fn+'model.pt')
 
         if validloader is not None:
 
@@ -188,12 +212,12 @@ def train(num_epoch, net, criterion, optimizer, trainloader, validloader=None, t
             fm.save_variable([loss_log, valid_accuracy_log, test_accuracy_log, max_accuracy, best_epoch],
                              'RotNet_rotation_{}{}'.format(num_epoch + epoch_offset, paper_string))
 
-    return loss_log, valid_accuracy_log, test_accuracy_log, max_accuracy, best_epoch
+    return loss_log, valid_accuracy_log, test_accuracy_log, max_accuracy, best_epoch, best_accuracy
 
 
 def adaptive_learning(lr_list, epoch_change, momentum, weight_decay, net, criterion, trainloader, validloader=None,
                       testloader=None, classifier=None, conv_block_num=None, rot=None, use_paper_metric=False,
-                      use_ConvClassifier=False, semi=None):
+                      use_ConvClassifier=False, semi=None, save_after_epoch=10, load_checkpoint=False, chkpt_fn = ''):
     """
     Use adaptive learning rate to train the neural network.
 
@@ -235,6 +259,9 @@ def adaptive_learning(lr_list, epoch_change, momentum, weight_decay, net, criter
     test_accuracy_log = []
     max_accuracy = 0
     best_epoch = 0
+    epoch = -1
+    optimizer = None
+    best_accuracy = 0.0
 
     for i, lr in enumerate(lr_list):
         if i == 0:
@@ -244,21 +271,35 @@ def adaptive_learning(lr_list, epoch_change, momentum, weight_decay, net, criter
 
         num_epoch = epoch_change[i] - epoch_offset
 
-        if classifier is None:
-            optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay, nesterov=True)
-        else:
-            optimizer = optim.SGD(classifier.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay,
-                                  nesterov=True)
+        if optimizer is None:
+            if classifier is None:
+                optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay, nesterov=True)
+            else:
+                optimizer = optim.SGD(classifier.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay,
+                                      nesterov=True)
+
+        if (epoch > num_epoch):
+            epoch = epoch - num_epoch
+            continue
+
+        if load_checkpoint is True and epoch == -1:
+            net, optimizer, epoch, best_accuracy = fm.load_ckp('./models/'+chkpt_fn+'model.pt', net, optimizer)
+            load_checkpoint = False # So that this loop is not entered again
+            if (epoch > num_epoch):
+                epoch = epoch - num_epoch
+                continue
 
         if i == (len(lr_list) - 1):
             printing = True
         else:
             printing = False
 
-        tmp_loss_log, tmp_valid_accuracy_log, tmp_test_accuracy_log, max_accuracy, best_epoch = \
+        if epoch < 0: epoch = 0 # No model was loaded
+
+        tmp_loss_log, tmp_valid_accuracy_log, tmp_test_accuracy_log, max_accuracy, best_epoch, best_accuracy = \
             train(num_epoch, net, criterion, optimizer, trainloader, validloader, testloader, classifier,
                   conv_block_num, epoch_offset, rot, printing, max_accuracy, best_epoch, use_paper_metric,
-                  use_ConvClassifier, semi)
+                  use_ConvClassifier, semi, save_after_epoch, best_accuracy, epoch, chkpt_fn)
 
         loss_log += tmp_loss_log
         valid_accuracy_log += tmp_valid_accuracy_log

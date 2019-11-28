@@ -2,7 +2,17 @@ import os
 import pickle
 import torch
 
+def save_ckp(state, checkpoint_dir, checkpoint_name):
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
+    f_path = os.path.join(checkpoint_dir, checkpoint_name)
+    torch.save(state, f_path)
 
+def load_ckp(checkpoint_fpath, model, optimizer):
+    checkpoint = torch.load(checkpoint_fpath)
+    model.load_state_dict(checkpoint['state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+    return model, optimizer, checkpoint['epoch'], checkpoint['best_accuracy']
 
 def save_variable(var_list, filename):
     """
