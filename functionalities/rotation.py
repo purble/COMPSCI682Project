@@ -80,7 +80,7 @@ def circulize(img):
     # print(img.shape)
     arr = np.zeros_like(img)
     m = (int)(img.shape[0]/2)
-    print("circle_approx")
+    # print("circle_approx")
     for i,s in enumerate(circle_approx):
         r = (int)(math.ceil(s/2))
         # print(m, i, r)
