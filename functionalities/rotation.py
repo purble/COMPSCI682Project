@@ -91,6 +91,36 @@ def circulize(img):
 
     return torchvision.transforms.ToTensor()(arr)
 
+
+def generate_random_occl(size):
+    x_rand = random.randint(10,80)
+    y_rand = 90-x_rand
+    patch_width = int(0.01*x_rand*size)
+    patch_height = int(0.01*y_rand*size)
+    # print('patch_width',patch_width)
+    # print('patch_height',patch_height)
+    x_max = int(size-patch_width)
+    y_max = int(size-patch_height)
+
+    x0 = random.randint(0,x_max)
+    y0 = random.randint(0,y_max)  
+
+    return [x0,y0,patch_width,patch_height]
+
+
+def random_oclussion(images,patch_params,flag=True):
+
+    img = images
+    if flag:
+        x0,y0,patch_width,patch_height = generate_random_occl(32) 
+    else:
+        x0,y0,patch_width,patch_height = patch_params
+    for i in range(img.shape[1]):
+      for j in range(img.shape[2]):
+          img[:,x0:x0 + patch_width, y0:y0 + patch_height] = 0.0  
+
+    return img
+
 def rotate(image, rotation):
 
     # print("Rotating by ", label.item()*(180/math.pi))
@@ -110,6 +140,14 @@ def rotate(image, rotation):
 def apply2(func, M, rotations):
 
     tList = [func(m, rotations[i]) for i,m in enumerate(torch.unbind(M, dim=0))]
+    res = torch.stack(tList, dim=0)
+
+    return res
+
+def apply3(func, M, patch_params,flag):
+
+    
+    tList = [func(m,patch_params,flag) for m in torch.unbind(M, dim=0)]
     res = torch.stack(tList, dim=0)
 
     return res
@@ -135,10 +173,15 @@ def create_rot_batch(images, labels, rot=['90', '180', '270']):
     rot_labels = torch.ones(len(images)) * 0
     counter = 1
 
+    patch_params = generate_random_occl(32)
     for r in rot:
         r = (int)(r)
         rotations = torch.ones(len(images)) * (r*1.0)
         images_rot = apply2(rotate, images, rotations)
+
+        images_occ = apply3(random_oclussion,images_rot,patch_params,False)
+        c_images_rot = apply(circulize, images_occ)
+
         c_images_rot = apply(circulize, images_rot)
         rot_batch = torch.cat((rot_batch, c_images_rot), 0)
         class_labels = torch.cat((class_labels, labels), 0)
